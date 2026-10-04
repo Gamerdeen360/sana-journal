@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Journal</title>
+<style>
+:root{--desk:#e9e2d3;--paper:#fbf8f0;--back:#efe8d8;--ink:#2b261f;--mute:#9a907f;--rule:#e8e1d1;--edge:#d6ccb6;--accent:#8c5a2b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--desk:#0e0c0a;--paper:#1f1b16;--back:#171410;--ink:#ece3d2;--mute:#7f7666;--rule:#2c2721;--edge:#2f2922;--accent:#d9a86c}}
+:root[data-theme="dark"]{--desk:#0e0c0a;--paper:#1f1b16;--back:#171410;--ink:#ece3d2;--mute:#7f7666;--rule:#2c2721;--edge:#2f2922;--accent:#d9a86c}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--desk);color:var(--ink);font-family:Georgia,"Times New Roman",serif;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-x:hidden}
+#stage{position:relative;width:min(92vw,520px);height:min(78vh,700px);perspective:2200px;margin-top:6px}
+.pg{position:absolute;inset:0;box-sizing:border-box;padding:30px 30px 56px 38px;display:flex;flex-direction:column;background:linear-gradient(90deg,rgba(0,0,0,.09),rgba(0,0,0,0) 26px),var(--paper);border-radius:3px 8px 8px 3px;box-shadow:1px 1px 0 var(--edge),2px 2px 0 var(--paper),3px 3px 0 var(--edge),4px 4px 0 var(--paper),5px 5px 0 var(--edge),0 12px 30px rgba(0,0,0,.25)}
+#base{z-index:1}
+#sd{position:absolute;inset:0;z-index:2;background:#000;opacity:0;pointer-events:none;border-radius:3px 8px 8px 3px}
+.leaf{position:absolute;inset:0;z-index:3;transform-origin:left center;transform-style:preserve-3d;pointer-events:none}
+.leaf .pg,.leaf .bk{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.bk{position:absolute;inset:0;background:linear-gradient(270deg,rgba(0,0,0,.08),rgba(0,0,0,0) 30px),var(--back);transform:rotateY(180deg);border-radius:8px 3px 3px 8px;box-shadow:0 0 12px rgba(0,0,0,.2)}
+.dt{display:flex;align-items:center;gap:8px;height:42px;border-bottom:1px solid var(--ink);margin-bottom:12px;flex:none}
+.dt input,.dt span{flex:1;min-width:0;border:0;background:none;outline:none;color:var(--ink);font:1.05rem Georgia,serif;letter-spacing:.04em;padding:0}
+.dt input::placeholder{color:var(--mute)}
+.dt button{border:0;background:none;color:var(--accent);font:.75rem system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.tx{flex:1;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:repeating-linear-gradient(transparent 0 31px,var(--rule) 31px 32px) local;color:var(--ink);font:1.05rem/32px Georgia,serif;padding:0;caret-color:var(--accent);white-space:pre-wrap;word-wrap:break-word;overflow:hidden}
+textarea.tx{overflow:auto}
+textarea.tx::placeholder{color:var(--mute);opacity:.6}
+.pn{position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:.8rem;color:var(--mute);letter-spacing:.15em}
+.in{overflow-y:auto;padding-top:14px}
+.in h2{font-weight:400;font-style:italic;font-size:1.5rem;letter-spacing:.03em;color:var(--ink);margin:0 0 22px;text-align:left}
+.in p{margin:0;line-height:1.85;font-size:clamp(.88rem,2.5vh,1.05rem)}
+.in small{display:block;text-align:center;color:var(--mute);margin-top:24px;font-size:.78rem;letter-spacing:.1em;font-style:italic}
+nav{display:flex;align-items:center;gap:14px;margin-top:22px}
+nav button{background:none;border:1px solid var(--edge);color:var(--ink);width:40px;height:40px;border-radius:50%;font-size:1.2rem;cursor:pointer}
+nav button:disabled{opacity:.25;cursor:default}
+#lb{width:auto;min-width:130px;border:0;font:.85rem Georgia,serif;letter-spacing:.12em;color:var(--mute);height:40px;border-radius:999px}
+#lb input{width:70px;text-align:center;font:inherit;border:1px solid var(--edge);border-radius:6px;background:var(--paper);color:var(--ink);padding:4px}
+.note{font:.68rem system-ui,sans-serif;color:var(--mute);margin:12px 0 6px;letter-spacing:.04em;opacity:.8}
+</style>
+</head>
+<body>
+<div id="stage"><div id="base" class="pg"></div><div id="sd"></div></div>
+<nav><button id="pv" aria-label="Previous page">‹</button><button id="lb"></button><button id="nx" aria-label="Next page">›</button></nav>
+<div class="note">Your entries are saved privately in this browser.</div>
+<script>
+const N=500,$=id=>document.getElementById(id);
+const INTRO="This journal is dedicated to your husband, Zain. Everyday, try to write something good about him. Whether it's something he did, the way he acted, a good deed he did, or even something small like making you smile, make sure you journal everyday about him. It's up to you when you want to start and when you want to stop, this is just a free space for you to write whatever you wish about him and have it kept completely to yourself. Inshallah this will strengthen the relationship between the two of you and put lots of barakah in your lives. Happy journaling!";
+let data={},page=0,busy=false,st;
+try{data=JSON.parse(localStorage.getItem('sj-data')||'{}');page=Math.min(N,Math.max(0,+localStorage.getItem('sj-page')||0))}catch(e){}
+const save=()=>{try{localStorage.setItem('sj-data',JSON.stringify(data));localStorage.setItem('sj-page',page)}catch(e){}};
+const later=()=>{clearTimeout(st);st=setTimeout(save,300)};
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const today=()=>new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+const fine=matchMedia("(pointer:fine)").matches;
+function staticHTML(n){
+  if(n===0)return`<div class="in"><h2>To Sana...</h2><p>${INTRO}</p><small>turn the page to begin →</small></div>`;
+  const e=data[n]||{d:"",t:""};
+  return`<div class="dt"><span>${esc(e.d)}</span></div><div class="tx">${esc(e.t)}</div><div class="pn">${n}</div>`;
+}
+function mount(n){
+  const b=$("base");
+  if(n===0){b.innerHTML=staticHTML(0);return}
+  const e=data[n]||{d:"",t:""};
+  b.innerHTML=`<div class="dt"><input id="di" placeholder="Date" autocomplete="off"><button id="td">Today</button></div><textarea id="ta" class="tx" placeholder="Write here…"></textarea><div class="pn">${n}</div>`;
+  const di=$("di"),ta=$("ta"),td=$("td");di.value=e.d;ta.value=e.t;td.style.display=e.d?"none":"";
+  const sync=()=>{const d=di.value,t=ta.value;if(d||t)data[n]={d,t};else delete data[n];td.style.display=d?"none":"";later()};
+  td.onclick=()=>{di.value=today();sync()};
+  di.oninput=sync;
+  ta.oninput=()=>{if(!di.value)di.value=today();sync()};
+}
+function ui(n){
+  $("lb").textContent=n===0?"To Sana...":`Page ${n} of ${N}`;
+  $("pv").disabled=n<=0;$("nx").disabled=n>=N;
+}
+function go(n){
+  n=Math.max(0,Math.min(N,n|0));
+  if(busy||n===page)return;
+  save();busy=true;
+  const old=page,fwd=n>old,stage=$("stage"),leaf=document.createElement("div");
+  leaf.className="leaf";
+  const ease="cubic-bezier(.5,.05,.2,1)",dur=950;
+  $("sd").animate([{opacity:0},{opacity:.3,offset:.5},{opacity:0}],{duration:dur,easing:"ease-in-out"});
+  if(fwd){
+    leaf.innerHTML=`<div class="pg">${staticHTML(old)}</div><div class="bk"></div>`;
+    page=n;mount(n);ui(n);stage.appendChild(leaf);
+    leaf.animate([{transform:"rotateY(0deg)"},{transform:"rotateY(-180deg)"}],{duration:dur,easing:ease,fill:"forwards"}).finished
+      .then(()=>leaf.animate([{opacity:1},{opacity:0}],{duration:140,fill:"forwards"}).finished)
+      .then(()=>{leaf.remove();busy=false;later()});
+  }else{
+    leaf.innerHTML=`<div class="pg">${staticHTML(n)}</div><div class="bk"></div>`;
+    leaf.style.transform="rotateY(-180deg)";leaf.style.opacity=0;
+    stage.appendChild(leaf);ui(n);
+    leaf.animate([{opacity:0},{opacity:1}],{duration:140,fill:"forwards"});
+    leaf.animate([{transform:"rotateY(-180deg)"},{transform:"rotateY(0deg)"}],{duration:dur,easing:ease,fill:"forwards"}).finished
+      .then(()=>{page=n;mount(n);leaf.remove();busy=false;later()});
+  }
+}
+$("pv").onclick=()=>go(page-1);
+$("nx").onclick=()=>go(page+1);
+$("lb").onclick=()=>{
+  if($("gt"))return;
+  $("lb").innerHTML=`<input id="gt" type="number" min="0" max="${N}" placeholder="page">`;
+  const g=$("gt");g.focus();
+  const done=()=>{const v=g.value;ui(page);if(v!=="")go(+v)};
+  g.onkeydown=e=>{if(e.key=="Enter")g.blur();if(e.key=="Escape"){g.value="";g.blur()}};
+  g.onblur=done;
+};
+document.addEventListener("keydown",e=>{
+  const typing=/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if(e.altKey&&e.key=="ArrowRight"||e.key=="PageDown"||(!typing&&e.key=="ArrowRight")){e.preventDefault();go(page+1)}
+  if(e.altKey&&e.key=="ArrowLeft"||e.key=="PageUp"||(!typing&&e.key=="ArrowLeft")){e.preventDefault();go(page-1)}
+});
+addEventListener("pagehide",save);
+mount(page);ui(page);
+</script>
+</body>
+</html>
